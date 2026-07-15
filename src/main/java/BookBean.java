@@ -4,7 +4,7 @@ import com.opencsv.bean.CsvBindByName;
 public class BookBean {
 
     @CsvBindByName
-    private int isbn;
+    private long isbn;
 
     @CsvBindByName
     private String titel;
@@ -21,11 +21,11 @@ public class BookBean {
     public BookBean() {
     }
 
-    public int getIsbn() {
+    public long getIsbn() {
         return isbn;
     }
 
-    public void setIsbn(int isbn) {
+    public void setIsbn(long isbn) {
         this.isbn = isbn;
     }
 

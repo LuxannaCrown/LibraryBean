@@ -18,7 +18,7 @@ public class UserBean {
     public UserBean () {
     }
 
-    public void addBorrowedBooks (int isbn) { //Fügt ein Buch in der users.csv hinzu
+    public void addBorrowedBooks (long isbn) { //Fügt ein Buch in der users.csv hinzu
 
         if (borrowedbooks == null || borrowedbooks.isEmpty()) {
             borrowedbooks = String.valueOf(isbn);
@@ -27,7 +27,7 @@ public class UserBean {
         }
     }
 
-    public void removeBorrowedBooks (int isbn) { //entfernt ein Buch aus der users.csv
+    public void removeBorrowedBooks (long isbn) { //entfernt ein Buch aus der users.csv
 
         if (borrowedbooks == null || borrowedbooks.isEmpty()) {
             return;
@@ -39,7 +39,7 @@ public class UserBean {
         borrowedbooks = String.join(";", books);
     }
 
-    public boolean hasBorrowedBooks (int isbn) { //Checkt ob beim User das Buch überhaupt hinterlegt ist
+    public boolean hasBorrowedBooks (long isbn) { //Checkt ob beim User das Buch überhaupt hinterlegt ist
 
         if (borrowedbooks == null || borrowedbooks.isEmpty()) {
             return false;

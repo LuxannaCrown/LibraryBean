@@ -1,0 +1,373 @@
+import com.opencsv.bean.CsvToBeanBuilder;
+import com.opencsv.bean.StatefulBeanToCsv;
+import com.opencsv.bean.StatefulBeanToCsvBuilder;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+public class Library {
+
+    boolean libraryAktiv = true;
+
+    public void starteLibrary() {
+        List<BookBean> beans = new ArrayList<>();
+        List<UserBean> users = new ArrayList<>();
+
+        try {
+            beans = new CsvToBeanBuilder(new FileReader("src\\main\\java\\books.csv"))
+                    .withType(BookBean.class)
+                    .build()
+                    .parse();
+            for (BookBean book : beans) {
+                IO.println(book.getIsbn() + " | " + book.getTitel() + " | " + book.getAutor() + " | " + book.getStatus());
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            users =  new CsvToBeanBuilder(new FileReader("src\\main\\java\\users.csv"))
+                    .withType(UserBean.class)
+                    .build()
+                    .parse();
+            for (UserBean user : users) {
+                IO.println(user.getId() + " | " + user.getName() + " | " + user.getBorrowedbooks());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
+        while (libraryAktiv) {
+
+            String menu = getMenu();
+
+            switch (menu) {
+                case "1"://Buch hinzufügen
+                    getNewBook(beans);
+                    saveBook(beans);
+                    IO.readln("Drück Enter um fortzufahren.");
+                    break;
+
+
+                case "2":  //Alle bücher anzeigen
+                    getBookList(beans);
+                    IO.readln("Drück Enter um fortzufahren.");
+                    break;
+
+
+                case "3":  //Buch ausleihen
+                    getBorrowBook(beans, users);
+                    saveBook(beans);
+                    saveUser(users);
+                    IO.readln("Drück Enter um fortzufahren.");
+                    break;
+
+
+                case "4":  //Buch zurückgeben
+                    getReturnBook(beans, users);
+                    saveBook(beans);
+                    saveUser(users);
+                    IO.readln("Drück Enter um fortzufahren.");
+                    break;
+
+
+                case "5": //Buch suchen
+                    getSearchBook(beans);
+                    IO.readln("Drück Enter um fortzufahren.");
+                    break;
+
+
+                case "0": //Programm beenden
+                    saveBook(beans);
+                    saveUser(users);
+                    IO.println("\nLibrary Programm wird beendet.");
+                    libraryAktiv = false;
+                    break;
+            }
+        }
+    }
+
+
+
+    String getMenu() {
+        String[] menuOptions = {"1 - Buch hinzufügen\n", "2 - Alle Bücher anzeigen\n", "3 - Buch ausleihen\n",
+                "4 - Buch zurückgeben\n", "5 - Buch suchen\n", "0 - Beenden\n"};
+
+        IO.println("\n\n===== Bibiliothek =====");
+        IO.println("\n\n" + Arrays.toString(menuOptions) + "\nGebe zur Auswahl die zugehörige Zahl ein.\n");
+        while (true) {
+            String selection = IO.readln("Menuauswahl: ");
+
+            if (selection.equals("1") || selection.equals("2") || selection.equals("3") || selection.equals("4") || selection.equals("5")
+                    || selection.equals("0")) {
+                return selection;
+            } else {
+                IO.println("Bitte benutzen 0-5 zur Menüauswahl.");
+            }
+        }
+    }
+
+
+
+    void getNewBook (List<BookBean> beans) {
+
+        IO.println("\n===== Neues Buch =====");
+
+        BookBean newBook = new BookBean();
+
+        while (true) {
+            try {
+                newBook.setIsbn(Integer.parseInt(IO.readln("ISBN: ")));
+                break;
+            } catch (NumberFormatException e) {
+                IO.println("Bitte gebe eine Gültige ISBN ein.");
+            }
+        }
+        newBook.setTitel(IO.readln("Titel: "));
+        newBook.setAutor(IO.readln("Autor: "));
+        newBook.setStatus("Verfügbar");
+        newBook.setBesitzer("Bibliothek");
+
+        boolean isbnExists = beans.stream()
+                .anyMatch(book -> book.getIsbn() == newBook.getIsbn());
+        if (isbnExists) {
+            IO.println("Fehler: Buch mit der ISBN: [" + newBook.getIsbn() + "] existiert bereits");
+        } else {
+            beans.add(newBook);
+            IO.println("Buch wurde hinzugefügt.");
+        }
+    }
+
+
+
+    void getBookList (List<BookBean> beans) {
+        IO.println("\n===== Inventar =====\n");
+        for (BookBean book : beans) {
+            IO.println(book.getIsbn() + " | " + book.getTitel() + " | " + book.getAutor() + " | " + book.getStatus() + " | " + book.getBesitzer());
+        }
+    }
+
+
+
+    void getBorrowBook (List<BookBean> beans, List<UserBean> users) { //Funktion zum Buch ausleihen, ändert Einträge in users.csv und books.csv
+        int borrowIsbn;
+
+        IO.println("===== Verleihung =====");
+
+        while (true) {
+            try {
+                borrowIsbn = Integer.parseInt(IO.readln("Welches Buch möchtest du dir ausleihen? ISBN: "));
+                break;
+            } catch (NumberFormatException e) {
+                IO.println("Bitte gebe eine gültige Nummer ein.");
+            }
+        }
+        boolean bookFound = false;
+
+        for (BookBean book : beans) {
+            if (book.getIsbn() == borrowIsbn) {
+                bookFound = true;
+
+                if ("Ausgeliehen".equals(book.getStatus())) {
+                    IO.println("Das Buch '" + book.getTitel() + "' ist bereits ausgeliehen.");
+
+                } else {
+                    while (true) {
+                        String confirmBorrow = IO.readln("Bestätige: Möchtest du '" + book.getTitel() + "' ausleihen? Ja/Nein: ");
+
+                        if ("Ja".equalsIgnoreCase(confirmBorrow)) {
+                            UserBean borrower = getBorrower(users);
+
+
+                            if (borrower != null) {
+                                borrower.addBorrowedBooks(book.getIsbn());
+                                book.setStatus("Ausgeliehen");
+                                book.setBesitzer(borrower.getName());
+                                IO.println("Buch '" + book.getTitel() + "' wurde erfolgreich ausgeliehen");
+                                break;
+                            }
+
+                            break;
+
+                        } else if ("Nein".equalsIgnoreCase(confirmBorrow)) {
+                            IO.println("Leih-Prozess wird abgebrochen.");
+                            break;
+
+                        } else {
+                            IO.println("Bitte mit 'Ja' oder 'Nein' antworten.");
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        if (!bookFound) {
+            IO.println("Buch mit der ISBN: [" + borrowIsbn + "] existiert nicht.");
+        }
+    }
+
+
+
+    void getReturnBook (List<BookBean> beans, List<UserBean> users) {  //Funktion zur RÜckgabe eines Buches, ändert die Einträge in users.csv und books.csv
+        int returnIsbn;
+
+        IO.println("===== Rückgabe =====");
+
+        while (true) {
+            try {
+                returnIsbn = Integer.parseInt(IO.readln("Welches Buch möchtest du zurückgeben? ISBN: "));
+                break;
+            } catch (NumberFormatException e) {
+                IO.println("Bitte gebe eine gültige ISBN ein.");
+            }
+        }
+        boolean bookFound = false;
+
+        for (BookBean book : beans) {
+            if (book.getIsbn() == returnIsbn) {
+                bookFound = true;
+
+                if ("Verfügbar".equals(book.getStatus())) {
+                    IO.println("Das Buch '" + book.getTitel() + "' ist bereits in der Bibliothek.");
+                    break;
+
+                } else {
+                    String confirmBorrow = IO.readln("Bestätige: Möchtest du '" + book.getTitel() + "' zurückgeben? Ja/Nein: ");
+
+                    while (true) {
+                        if ("Ja".equalsIgnoreCase(confirmBorrow)) {
+                            UserBean borrower = findUserName(users, book.getBesitzer());
+
+
+                            if (borrower != null && borrower.hasBorrowedBooks(book.getIsbn())) {
+                                borrower.removeBorrowedBooks(book.getIsbn());
+                                book.setStatus("Verfügbar");
+                                book.setBesitzer("Bibliothek");
+                                IO.println("Buch '" + book.getTitel() + "' wurde erfolgreich zurückgegeben");
+                            } else {
+                                IO.println("Rückgabe ist nicht möglich. Buch ist dem Besitzer nicht zugeordnet.");
+                            }
+                            break;
+
+                        } else if ("Nein".equalsIgnoreCase(confirmBorrow)) {
+                            IO.println("Rückgabe-Prozess wird abgebrochen.");
+                            break;
+
+                        } else {
+                            IO.println("Bitte mit 'Ja' oder 'Nein' antworten.");
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        if (!bookFound) {
+            IO.println("Buch mit der ISBN: [" + returnIsbn + "] existiert nicht.");
+        }
+    }
+
+
+
+    void getSearchBook (List<BookBean> beans) {  //Sucht ein Buch mit der ISBN aus der book.csv
+        int searchIsbn;
+
+        IO.println("===== Buchsuche =====");
+
+        while (true) {
+            try {
+                searchIsbn = Integer.parseInt(IO.readln("Welches Buch suchst du? ISBN: "));
+                break;
+            } catch (NumberFormatException e) {
+                IO.println("Bitte gebe eine gültige ISBN ein.");
+            }
+        }
+
+        boolean bookFound = false;
+
+        for (BookBean book : beans) {  //Geht alle Beans der books.csv Zeile für Zeile durch und fängt dann mit der IF-Clause wenn die ISBNs übereinstimmen
+
+            if (book.getIsbn() == searchIsbn) {
+                IO.println("Buch wurde gefunden:");
+                bookFound = true;
+                IO.println(book.getIsbn() + " | " + book.getTitel() + " | " + book.getAutor() + " | " + book.getStatus() + " | " + book.getBesitzer());
+                break;
+            }
+        }
+
+        if (!bookFound) {
+            IO.println("Buch mit der ISBN: [" + searchIsbn + "] wurde nicht gefunden.");
+        }
+    }
+
+
+
+    UserBean getBorrower (List<UserBean> users) { //Ist für die Eingabe wer das Buch ausleiht
+
+        while (true) {
+            String name = IO.readln("Name des Entleiher: ");
+            name = name.trim();
+
+            if (name.equalsIgnoreCase("abbrechen")) {
+                return null;
+            } else if (name.isEmpty()) {
+                IO.println("Bitte gebe einen Namen ein.");
+                continue;
+            }
+
+            UserBean user =  findUserName(users, name);
+
+            if (user != null) {
+                return user;
+            }
+
+            IO.println("Benutzer konnte nicht gefunden werden.");
+        }
+    }
+
+
+
+    UserBean findUserName (List<UserBean> users, String name) {  //Checkt einmal ober der User überhaubt in der users.csv existiert
+
+        for (UserBean user :  users) {
+            if (user.getName() != null && user.getName().equalsIgnoreCase(name)) {
+                return user;
+            }
+        }
+
+        return null;
+    }
+
+
+
+    void saveBook (List<BookBean> beans) { //Funktion zum abspeichern in die books.csv Datei
+        try {
+            Writer writer = new FileWriter("src\\main\\java\\books.csv");
+            StatefulBeanToCsv<BookBean> beanToCsv = new StatefulBeanToCsvBuilder(writer)
+                    .build();
+            beanToCsv.write(beans);
+            writer.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        IO.println("Änderungen wurden gespeichert.");
+    }
+
+
+
+    void saveUser (List<UserBean> users) {  //Funktion zum abspeichern in die users.csv Datei
+        try {
+            Writer writer = new FileWriter("src\\main\\java\\users.csv");
+            StatefulBeanToCsv<UserBean> beanToCsv = new StatefulBeanToCsvBuilder(writer)
+                    .build();
+            beanToCsv.write(users);
+            writer.close();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+}

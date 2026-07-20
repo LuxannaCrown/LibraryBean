@@ -147,7 +147,7 @@ public class Library {
 
             String hashPassword = hashPassword(password);  //Jagt den String "password" durch ein Hash
 
-            if (uid.equals("Admin") && hashPassword.equals("03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4")) {
+            if (uid.trim().equals("Admin") && hashPassword.equals("03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4")) {
                 return true;
             } else {
                 IO.println("Deine ID und Password stimmen nicht überein.");
@@ -205,19 +205,21 @@ public class Library {
                 IO.println("Bitte gebe eine Gültige ISBN ein.");
             }
         }
-        newBook.setTitel(IO.readln("Titel: "));
-        newBook.setAutor(IO.readln("Autor: "));
-        newBook.setStatus("Verfügbar");
-        newBook.setBesitzer("Bibliothek");
 
         boolean isbnExists = beans.stream()  //Checkt ob es bereits einen Eintrag mit der ISBN in books.csv existiert
                 .anyMatch(book -> book.getIsbn() == newBook.getIsbn());
         if (isbnExists) {
             IO.println("Fehler: Buch mit der ISBN: [" + newBook.getIsbn() + "] existiert bereits.");
-        } else {
-            beans.add(newBook);
-            IO.println("Buch wurde hinzugefügt.");
         }
+
+        newBook.setTitel(IO.readln("Titel: "));
+        newBook.setAutor(IO.readln("Autor: "));
+        newBook.setStatus("Verfügbar");
+        newBook.setBesitzer("Bibliothek");
+
+        beans.add(newBook);
+        IO.println("Buch wurde hinzugefügt.");
+
     }
 
 
@@ -588,7 +590,7 @@ public class Library {
 
 
         } catch (NoSuchAlgorithmException e) {
-            JOptionPane.showMessageDialog(null, "Fail");
+            IO.println("FAIL");
             return fehlschlag;
         }
     }
